@@ -85,7 +85,7 @@ class Function(object):
 
     @shape.setter
     def shape(self, shape):
-        assert(shape)
+        assert shape
         self._shape = shape
 
     @property
@@ -236,6 +236,14 @@ class FunctionGraph(object):
         self._outputs[fun] = set()
         fun.register_in_graph(self)
         return fun
+
+    def add_constant(self, identifier, shape):
+        """Convenience function for adding constants."""
+        return self.add_function(identifier, Constant, shape)
+
+    def add_variable(self, identifier, shape):
+        """Convenience function for adding variables."""
+        return self.add_function(identifier, Variable, shape)
 
     def identifier(self, fun):
         """Return the identifier of a function."""

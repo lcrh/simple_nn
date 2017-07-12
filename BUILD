@@ -16,3 +16,25 @@ python_tests(
         "3rdparty/python:numpy",
     ],
 )
+
+python_library(
+    name = "nn_lib",
+    sources = [
+        "nn_lib.py",
+    ],
+    dependencies = [
+        ":function",
+        "3rdparty/python:numpy",
+    ],
+)
+
+python_tests(
+    name = "nn_lib_test",
+    sources = [
+        "nn_lib_test.py",
+    ],
+    dependencies = [
+        ":function",
+        ":nn_lib",
+    ],
+)
