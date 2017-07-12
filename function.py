@@ -158,10 +158,9 @@ class FunctionBuilder(object):
     """Helper base class to allow constructing more complex function
     hierarchies."""
 
-    @classmethod
-    def instantiate(cls, graph, identifier, *args, **kwargs):
-        """Calls constructor (must be provided by subclasses)."""
-        return cls(graph, identifier, *args, **kwargs)
+    def __init__(self, graph, identifier, *unused_args, **unused_kwargs):
+        self._graph = graph
+        self._identifier = identifier
 
     @abc.abstractproperty
     def input_map(self):
@@ -207,7 +206,7 @@ class FunctionGraph(object):
             self._id_counter += 1
 
         if issubclass(function_type, FunctionBuilder):
-            result = function_type.instantiate(
+            result = function_type(
                 self, identifier, *constructor_args, **constructor_kw_args)
             try:
                 if not self._ids[identifier] == result.output:
@@ -226,6 +225,9 @@ class FunctionGraph(object):
             assert issubclass(function_type, Function)
 
         fun = function_type(*constructor_args, **constructor_kw_args)
+        if isinstance(fun, Constant):
+            fun.shape = fun.get_shape([])
+
         if identifier in self._ids:
             raise Error("Identifier already exists: " + identifier)
         self._ids[identifier] = fun
@@ -358,7 +360,7 @@ class ExecutionContext(object):
                 except KeyError:
                     if isinstance(fun, Variable):
                         raise Error("Unassigned variable: %s (%s)" % (fun.identifier, fun))
-                    self._output[fun] = np.array(value_fun(fun.shape))
+                    self._output[fun] = np.array(value_fun(fun.shape), dtype=np.double)
 
             # Set predecessors.
             predecs = {fun}
