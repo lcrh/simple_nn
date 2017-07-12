@@ -24,6 +24,7 @@ class Multiplier(function.PointwiseFunction):
 class SquareMultiplier(function.FunctionBuilder):
     """FunctionBuilder test. Computes x^2 * y."""
     def __init__(self, graph, identifier):
+        super(SquareMultiplier, self).__init__(graph, identifier)
         self._square = graph.add_function(identifier + "_sq", Square)
         self._mult = graph.add_function(identifier, Multiplier)
         self._mult.set_input(0, self._square)
@@ -137,9 +138,9 @@ def test_paths_gradient():
         graph, {"var": [5]})
 
     dsqsumdvar = context.gradient("sqsum", "var")
-    assert (dsqsumdvar == [11])
+    assert dsqsumdvar == [11]
     dsumdvar = context.gradient("sum", "var")
-    assert (dsumdvar == [2])
+    assert dsumdvar == [2]
 
 def test_complex_gradient():
     """Test computation of complex gradients."""
