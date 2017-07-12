@@ -70,16 +70,23 @@ class Function(object):
         """Yields indexed inputs of this function."""
         return self.graph.indexed_inputs(self)
 
-    def set_input_shapes(self, input_shapes):
+    @abc.abstractmethod
+    def get_shape(self, input_shapes):
         """This is called by the executor before the shape property is consulted
         to allow the function to determine its shape dynamically."""
         pass
 
-    @abc.abstractproperty
+    @property
     def shape(self):
-        """Returns shape. The set_input_shapes function is always called before
+        """Returns shape. The get_shape function is always called before
         this property is accessed."""
-        return (0,)
+        assert self._shape
+        return self._shape
+
+    @shape.setter
+    def shape(self, shape):
+        assert(shape)
+        self._shape = shape
 
     @property
     def size(self):
@@ -100,7 +107,10 @@ class Constant(Function):
         """Initialize constant with provided shape."""
         super(Constant, self).__init__()
         assert isinstance(shape, tuple)
-        self._shape = shape
+        self._var_shape = shape
+
+    def get_shape(self, input_shapes):
+        return self._var_shape
 
     def execute(self, input_array):
         if not input_array[0]:
@@ -113,10 +123,6 @@ class Constant(Function):
 
     def gradient(self, index, input_array):
         return np.ones(self.shape)
-
-    @property
-    def shape(self):
-        return self._shape
 
 class Variable(Constant):
     """A variable is a constant that must be explicitly assigned a value."""
@@ -143,14 +149,10 @@ class PointwiseFunction(Function):
         gradients are assumed to be zero."""
         return np.array([])
 
-    def set_input_shapes(self, input_shapes):
+    def get_shape(self, input_shapes):
         assert input_shapes
         assert all(shape == input_shapes[0] for shape in input_shapes[1:])
-        self._shape = input_shapes[0]
-
-    @property
-    def shape(self):
-        return self._shape
+        return input_shapes[0]
 
 class FunctionBuilder(object):
     """Helper base class to allow constructing more complex function
@@ -332,11 +334,13 @@ class ExecutionContext(object):
         # the graph is acyclic.
         for fun in graph.traverse_topological():
             fun = self._graph.lookup(fun)
+
             if any(p is None for _, p in fun.indexed_inputs()):
                 raise Error("Function " + str(fun) + " has unassigned child.")
+
             # Set shape:
             input_shapes = [p.shape for _, p in fun.indexed_inputs()]
-            fun.set_input_shapes(input_shapes)
+            fun.shape = fun.get_shape(input_shapes)
 
             # Assign variables
             if isinstance(fun, Constant):

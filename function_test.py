@@ -51,8 +51,7 @@ class Sum(function.Function):
         """Compute gradient w.r.t. input_array[index]."""
         return np.array([np.ones(input_array[index].shape)])
 
-    @property
-    def shape(self):
+    def get_shape(self, input_shapes):
         """Return shape."""
         return (1,)
 
@@ -122,6 +121,25 @@ def test_pointwise_gradient():
         [0, 0, 6],
     ]
     assert (grad == expected).all()
+
+def test_paths_gradient():
+    """Test non-tree function graph."""
+    graph = function.FunctionGraph()
+    var = graph.add_function("var", function.Variable, (1,))
+    # Compute var + var^2 and var + var
+    graph.add_function("sqsum", Sum).set_inputs(
+        var,
+        graph.add_function("sq", Square).set_inputs(var))
+    graph.add_function("sum", Sum).set_inputs(
+        var,
+        var)
+    context = function.ExecutionContext(
+        graph, {"var": [5]})
+
+    dsqsumdvar = context.gradient("sqsum", "var")
+    assert (dsqsumdvar == [11])
+    dsumdvar = context.gradient("sum", "var")
+    assert (dsumdvar == [2])
 
 def test_complex_gradient():
     """Test computation of complex gradients."""
