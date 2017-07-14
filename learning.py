@@ -71,7 +71,7 @@ class TrainingContext(object):
         self._objective_fun = self._graph.lookup(objective_fun)
         self._var_map = None
         self._value_map = dict(value_map) if value_map else {}
-        self.update_constants(value_map)
+        self.update_constants(self._value_map)
 
         # Initialize uninitialized constants.
         for fun in self._graph.traverse_topological():
