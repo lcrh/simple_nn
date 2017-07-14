@@ -24,14 +24,17 @@ def main():
     # Linear regression with squared error.
     graph = build_graph(2)
 
+    bias, grad = np.random.normal(size=(2,1)) * 10
+    print("Bias: %g, grad: %g" % (bias, grad))
     training_data = [
         {"x": np.array([[1, i]]),
-         "target": np.array([[-3 * i + 5]]) + 10 * np.random.normal(size=(1, 1))}
+         "target": (np.array([[grad * i + bias]]) + 10 *
+                    np.random.normal(size=(1, 1)))}
         for i in xrange(-30, 30)]
 
     trainer = learning.TrainingContext(
         graph, "squared_diff",
-        value_fun=lambda shape: np.random.normal(size=shape))
+        value_fun=lambda shape: np.random.normal(size=shape)*10)
 
     def avg_loss():
         sum_loss = 0.0
