@@ -29,7 +29,7 @@ class Function(object):
 
     @abc.abstractmethod
     def gradient(self, index, input_array):
-        """Computes gradient for input index, holding other inputs constant.
+        """Computes gradient for input index, holding other inputs parameter.
         Must return a tensor of shape self.shape x input_array[index].shape.
         """
         return np.array([])
@@ -99,13 +99,14 @@ class Function(object):
             raise Error("Function already registered in another graph.")
         self._graph = graph
 
-class Constant(Function):
-    """A constant is a vector that passes through it's input parameter which
-    must be assigned in the execution context."""
+class Parameter(Function):
+    """A parameter is a vector that passes through it's input which is be
+    assigned in the execution context. Parameter values can change through
+    learning."""
 
     def __init__(self, shape):
-        """Initialize constant with provided shape."""
-        super(Constant, self).__init__()
+        """Initialize parameter with provided shape."""
+        super(Parameter, self).__init__()
         assert isinstance(shape, tuple)
         self._var_shape = shape
 
@@ -124,14 +125,17 @@ class Constant(Function):
     def gradient(self, index, input_array):
         return np.ones(self.shape)
 
-class Variable(Constant):
-    """A variable is a constant that must be explicitly assigned a value."""
+class Variable(Parameter):
+    """A variable is a parameter that must be explicitly assigned a value."""
     pass
 
 class PointwiseFunction(Function):
     """A function that applies some operation pointwise, i.e., inputs and
     output have the same shape and each input element only influences its
     corresponding output_element."""
+
+    def __init__(self):
+        super(PointwiseFunction, self).__init__()
 
     def gradient(self, index, input_array):
         """Uses pointwise gradient internally."""
@@ -225,7 +229,7 @@ class FunctionGraph(object):
             assert issubclass(function_type, Function)
 
         fun = function_type(*constructor_args, **constructor_kw_args)
-        if isinstance(fun, Constant):
+        if isinstance(fun, Parameter):
             fun.shape = fun.get_shape([])
 
         if identifier in self._ids:
@@ -239,9 +243,9 @@ class FunctionGraph(object):
         fun.register_in_graph(self)
         return fun
 
-    def add_constant(self, identifier, shape):
-        """Convenience function for adding constants."""
-        return self.add_function(identifier, Constant, shape)
+    def add_parameter(self, identifier, shape):
+        """Convenience function for adding parameters."""
+        return self.add_function(identifier, Parameter, shape)
 
     def add_variable(self, identifier, shape):
         """Convenience function for adding variables."""
@@ -262,7 +266,7 @@ class FunctionGraph(object):
 
     def set_input(self, fun, i, input_fun):
         """Set input_fun to be the ith input to fun."""
-        assert not isinstance(fun, Constant)
+        assert not isinstance(fun, Parameter)
 
         if isinstance(input_fun, FunctionBuilder):
             input_fun = input_fun.output
@@ -324,8 +328,8 @@ class ExecutionContext(object):
 
     def __init__(self, graph, value_map, value_fun=np.zeros):
         """Initialize a new execution context for a FunctionGraph. Variables
-        must be explicitly assigned via value_map, constants may also be
-        assigned with value_fun. Only variables and constants can be
+        must be explicitly assigned via value_map, parameters may also be
+        assigned with value_fun. Only variables and parameters can be
         assigned."""
         # Cache from function to output as vector.
         self._output = {}
@@ -353,7 +357,7 @@ class ExecutionContext(object):
             fun.shape = fun.get_shape(input_shapes)
 
             # Assign variables
-            if isinstance(fun, Constant):
+            if isinstance(fun, Parameter):
                 try:
                     val = np.array(value_map[fun])
                     self._output[fun] = val.reshape(fun.shape)

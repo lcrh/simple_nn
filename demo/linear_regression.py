@@ -9,7 +9,7 @@ import nn_lib
 def build_graph(width):
     """Create linear function + squared diff loss."""
     graph = function.FunctionGraph()
-    graph.add_constant("w", (1, width))  # weights
+    graph.add_parameter("w", (1, width))  # weights
     graph.add_variable("x", (width, 1))  # input
     graph.add_function("out", nn_lib.MatMul).set_inputs("w", "x")
 

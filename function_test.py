@@ -60,7 +60,7 @@ def get_test_graph():
     """Create example graph."""
     graph = function.FunctionGraph()
     graph.add_function("sqmult1", SquareMultiplier).set_inputs(
-        graph.add_function("const1", function.Constant, (3, 2)),
+        graph.add_function("const1", function.Parameter, (3, 2)),
         graph.add_function("sqmult2", SquareMultiplier).set_inputs(
             graph.add_function("var1", function.Variable, (3, 2)),
             graph.add_function("var2", function.Variable, (3, 2))))
@@ -72,7 +72,7 @@ def test_build_graph():
 
     # Try looking up functions by identifier.
     assert isinstance(graph.lookup("sqmult1"), Multiplier)
-    assert isinstance(graph.lookup("const1"), function.Constant)
+    assert isinstance(graph.lookup("const1"), function.Parameter)
     assert isinstance(graph.lookup(["const1", "var2"])[1], function.Variable)
     assert graph.lookup("const1").identifier == "const1"
 

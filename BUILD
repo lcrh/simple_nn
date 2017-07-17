@@ -60,3 +60,14 @@ python_binary(
       "3rdparty/python:matplotlib",
     ],
 )
+
+python_binary(
+    name = "multilayer",
+    source = "demo/multilayer.py",
+    dependencies = [
+      ":function",
+      ":learning",
+      ":nn_lib",
+      "3rdparty/python:matplotlib",
+    ],
+)

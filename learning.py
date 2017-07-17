@@ -27,13 +27,13 @@ class LearningRule(object):
 
     @abc.abstractmethod
     def update_map(self, value_map):
-        """Receives a map of constant values and a list of gradient maps
-        and returns a map of constant value updates."""
+        """Receives a map of parameter values and a list of gradient maps
+        and returns a map of parameter value updates."""
         pass
 
 class ConstantRate(LearningRule):
     """Sum gradients and multiply by given rate."""
-    def __init__(self, rate=1.0):
+    def __init__(self, rate=0.1):
         self._rate = rate
         self._grad = {}
         self._num = {}
@@ -54,8 +54,9 @@ class ConstantRate(LearningRule):
     def update_map(self, value_map):
         updates = {}
         for fun, val in self._grad.iteritems():
-            updates[fun] = (
-                value_map[fun] - val / self._num[fun] * self._rate)
+            new_val = value_map[fun] - (val / self._num[fun]) * self._rate
+            updates[fun] = new_val
+                
         return updates
 
 class TrainingContext(object):
@@ -65,23 +66,23 @@ class TrainingContext(object):
                  value_map=None, value_fun=np.zeros,
                  frozen=None):
         """Create a new trainer object. Value_map contains initial value
-        assignments for constants. Frozen constants are not changed during
+        assignments for parameters. Frozen parameters are not changed during
         training."""
         self._graph = graph
         self._objective_fun = self._graph.lookup(objective_fun)
         self._var_map = None
-        self._value_map = dict(value_map) if value_map else {}
-        self.update_constants(self._value_map)
+        self._value_map = {}
+        self._frozen = set(frozen if frozen else [])
+        self._exec_context = None
+        if value_map:
+            self.update_parameters(value_map)
 
-        # Initialize uninitialized constants.
+        # Initialize uninitialized parameters.
         for fun in self._graph.traverse_topological():
-            if (isinstance(fun, function.Constant) and
+            if (isinstance(fun, function.Parameter) and
                     not isinstance(fun, function.Variable)):
                 if fun not in self._value_map:
                     self._value_map[fun] = value_fun(fun.shape)
-
-        self._frozen = set(frozen if frozen else [])
-        self._exec_context = None
 
     def train(self, var_maps, learning_rule):
         """Perform training with the given learning rule.
@@ -94,19 +95,23 @@ class TrainingContext(object):
         learning_rule.reset()
         for var_map in var_maps:
             learning_rule.register_gradient_map(self.gradient_map(var_map))
-        self.update_constants(learning_rule.update_map(self._value_map))
+        self.update_parameters(learning_rule.update_map(self._value_map))
 
-    def update_constants(self, value_map):
-        """Update constant values to values indicated in value_map."""
+    def update_parameters(self, value_map):
+        """Update parameter values to values indicated in value_map."""
         for fun, val in value_map.iteritems():
             fun = self._graph.lookup(fun)
-            if not isinstance(fun, function.Constant):
-                raise Error("Can't update non-constant function.")
+            if not isinstance(fun, function.Parameter):
+                raise Error("Can't update non-parameter function.")
             if isinstance(fun, function.Variable):
                 raise Error("Can't update variable.")
             if fun in self._frozen:
-                raise Error("Can't update frozen constant.")
+                raise Error("Can't update frozen parameter.")
             self._value_map[fun] = val
+
+    @property
+    def parameters(self):
+        return dict(self._value_map)
 
     def freeze(self, fun):
         """Freeze a function."""
@@ -152,12 +157,12 @@ class TrainingContext(object):
         return self._exec_context
 
     def gradient_map(self, var_map=None):
-        """Returns a map from non-frozen constants c to d/dc."""
+        """Returns a map from non-frozen parameters c to d/dc."""
         if var_map:
             self.set_variables(var_map)
         result = {}
         for fun in self._graph.traverse_topological():
-            if not isinstance(fun, function.Constant):
+            if not isinstance(fun, function.Parameter):
                 continue
             if isinstance(fun, function.Variable):
                 continue
